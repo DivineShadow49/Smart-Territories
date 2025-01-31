@@ -1,0 +1,44 @@
+
+On doit : Établir Une BDD
+		  Une application
+		  Une mise en place client / serveur ????????
+		  Réception de données et traitement (+ affichage)
+		  Liens entre les mises en place (connexions, serveur…)
+
+
+			Voir architecture du projet (à faire après planif)
+
+
+Les données seront réceptionnées venant des capteurs, dans le programme qu'on aura créé. Les données seront analysées puis affichées dans l'application tout en étant stockées dans la base de données. 
+D'un autre côté, les logs de l'application seront tous sauvegardés (un fichier par jour) dans des fichiers excel, suivant une syntaxe précise (voir dossier pres).
+L'accès à l'appli sera restreinte par un mdp stocké dans la BDD (chiffré)
+
+Points importants :
+		Mesurer EN CONTINU les polluants de l'air & données météo (température, humidité et pression atmo)(FP1 / FP2)
+		Afficher les données en graphique (FP4)
+		Paramétrer le système -> modifier période de mesure, seuils d'alertes… (a voir quels autres paramètres avec ER) -(FP5)
+		Archiver les données -> mettre en place une BDD pour les analyses (FP6)
+
+		Paramétrage de l'appli -> dans la BDD
+		Application d'affichage : résolution = résolution d'écran d'affichage
+		Charte graphique?
+
+		Authentification à l'appli : mdp chiffré dans la BDD
+
+		Logs : Dans un fichier Excel -> save un max d'informations (pour analyse d'erreur)
+			"2 ans d'enregistrement avec 1 fichier par jour" 
+				-> fichier en nom : "log_(date)" ??
+			(CF principe d'écriture début page 10)
+
+		Choisir le langage le plus adapté à la prog
+		Respecter la charte d'écriture / variables
+
+
+
+Répartition des tâches (selon la doc de projet) partie IR
+	Un élève se charge de l'application entière
+	Un autre élève se charge de la réception & traitement des mesures, localisation des capteurs et BDD.
+
+
+Planification : 
+	Tenir compte des revues de projet, livraison, BTS blanc & Vacances comme autres évènements important
