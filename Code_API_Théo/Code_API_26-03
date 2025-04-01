@@ -1,0 +1,89 @@
+const express = require('express');
+const mongoose = require('mongoose’);
+
+//Connexion & la base de donnée mongo
+mongoose
+	.connect('mongodb://127.0.0.1/Test_Database')
+	.then(() => console.log('Connecté a MongoDB'))
+	.catch((err) => console.error('Erreur de connexion a MongoDB', err));
+
+//Création du schéma & modèle correspondant a la base qui est connectée
+//Ce schéma est un lien avec la base : il contient les données présentes dans cette dernière
+const testDatabaseSchema = new mongoose.Schema({
+	Capteur: String,
+	TypeDeDonnee: String,
+	Date: String
+}, {
+	collection: 'Test_Database'
+});
+
+const TestDatabase = mongoose.model('Test_Database’, testDatabaseSchema);
+
+//Création de notre application avec express
+const app = express();
+
+app.use(express.json());
+
+//Requête qui retournera toutes les données de la base
+//	Amélioration possible : mettre en place une limite de donnée de retour ex : "5" alors on retourne les 5 dernières
+app.get('/api/all', async (req, res) => {
+	try {
+//	On va chercher toutes les données présentes dans la base (avec le schéma)
+
+		const retour = await TestDatabase.find();
+//		console.log('Données récupérées: ', retour)
+		res.json(retour).status(200);
+
+	} catch (err) {
+		res.status(500).json({message : 'Erreur de récupération des données', error: err});
+
+	}
+});
+
+
+app.get('/api', async (req, res) => {
+	try {
+//	On filtre les données en fonction de ce qui est présent dans la requête
+
+		const { Capteur, TypeDeDonnee, Date } = req.query;
+		let filter = {};
+
+		if (Capteur) {
+			filter.Capteur = Capteur;
+		}
+
+		if (TypeDeDonnee) {
+			filter.TypeDeDonnee = TypeDeDonnee;
+
+		}
+
+		if (Date) {
+// 		Vérification du bon format de la date, sinon retourne le code erreur 400
+			const regexDate = new RegExp("^\\d{2}/\\d{2}/\\d{4}$");
+			if (!regexDate.test(Date)) {
+				return res.status(400).json({message: "Format de date invalide. Utiliser DD/MM/YYYY."});
+			}
+
+			filter.Date = Date;
+		}
+
+		const retour = await TestDatabase.find(filter);
+
+		console.log("Données retournées après filtrage", retour);
+
+
+//		On vérifie si le retour est vide "taille nulle" et renvoie un message précis pour l'utilisateur
+		if (Array.isArray(retour) && retour.length === 0) {
+			return res.status(404).json({message: 'Aucune donnée trouvée avec ces critères' });
+		}
+
+		console.log("Données finales renvoyées: ", retour);
+		return res.json(retour).status(200);
+
+	} catch (err) {
+		res.status(500).json({message : 'Erreur de récupération des données', error: err});
+	}
+});
+
+//Serveur en route sur le port 8080
+app.listen(8080, () => {console.log("Serveur à l'écoute)});
