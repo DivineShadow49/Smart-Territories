@@ -1,0 +1,15 @@
+Format des données
+
+Ca doit contenir
+	TypeDeDonnee -> Temperature, Pression-Atmo, Humidite, NO2, PM2.5, PM10, SO2, O3
+	Date -> 01/04/2025 13 (espace ou virgule ou n'importe quoi pour séparer l'heure)
+		JJ/MM/AAAA hh
+	Capteur -> Roseraie (l'endroit d'où ca vient)
+	Valeur -> entier ou dixième 
+		A envoyer en valeurs entières dans tout les cas pour vous (ER)
+		-> Dans ce cas il faut les multiplier par 10^n
+		Valeur / n
+EX
+	0.0017
+		-> 17
+			17, 4
