@@ -1,0 +1,93 @@
+const express = require('express');
+
+//Création de données de test (bouchonner les données)
+const donnees = [
+	{
+		Capteur: "Roseraie”,
+		TypeDeDonnee: "N02",
+		Date: "10/03/2025",
+		Valeur: 40
+	},
+
+	{
+		Capteur: "Saint-Serge”,
+		TypeDeDonnee: "Temperature",
+		Date: "20/03/2025",
+		Valeur: 12
+	},
+
+	{
+		Capteur: "Saint-Serge”,
+		TypeDeDonnee: "Pression-Atmo",
+		Date: "20/03/2025",
+		Valeur: 101325
+	},
+
+	{
+		Capteur: "Monplaisir”,
+		TypeDeDonnee: "Temperature",
+		Date: "26/03/2025",
+		Valeur: 13
+	}
+];
+
+
+const app = express();
+app.use(express.json());
+
+//Requête qui retournera toutes les données de la base
+
+// 	Amélioration possible : mettre en place une limite de donnée de retour ex : alors on retourne les 5 dernières
+
+app.get('/api/all’, async (req, res) => {
+	try {
+// 	On retourne directement toutes les données présentes dans notre variable donnees
+		res.json(donnees).status(200);
+
+	} catch (err) {
+		res.status(500).json({message : 'Erreur de récupération des données’, error: err});
+	}
+
+});
+
+
+app.get('/api', async (req, res) => {
+	try {
+		const { Capteur, TypeDeDonnee, Date } = req.query;
+
+//	Les données sont ajoutées dans une variable retour puis filtrées au fur et & mesure en fonction de la requête recue
+		let retour = donnees;
+
+		if (Capteur) {
+			console.log("Filtrage sur capteur", Capteur);
+			retour = retour.filter(obj => obj.Capteur === Capteur);
+		}
+
+		if (TypeDeDonnee) {
+			console.log("Filtrage sur TypeDeDonnee", TypeDeDonnee);
+			retour = retour.filter(obj => obj.TypeDeDonnee === TypeDeDonnee) ;
+		}
+
+		if (Date) {
+			console.log("Filtrage sur date", Date);
+			retour = retour.filter(obj => obj.Date === Date);
+		}
+
+		console.log("Données retournées après filtrage", retour);
+
+//	On vérifie si le retour est vide "taille nulle" et renvoie un message précis pour l'utilisateur
+		if (Array.isArray(retour) && retour.lenght === 0) {
+			return res.status(404).json({message: 'Aucune donnée trouvée avec ces critères' });
+		}
+
+		console.log("Données finales renvoyées: ", retour);
+		return res.json(retour).status(200);
+
+	} catch (err) {
+		res.status(500).json({message : "Erreur de récupération des données", error: err });
+	}
+});
+
+//Serveur en route sur le port 8080 (port localhost)
+app.listen(8080, () => {console.log("Serveur à l'écoute)});
+
