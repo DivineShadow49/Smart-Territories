@@ -10,9 +10,9 @@ CAPT_003	Université d’Angers
 CAPT_004	Parc Balzac
 
 Données reçu :
-"capteur_id": "CAPT_002",
-"temperature": 21.7,
-"NO2": 0.02,
-"timestamp": "2025-04-02T11:15:00Z"
+CapteurID: CAPT_002,
+TypeDeDonnée: "Température"
+Date: "JJ/MM/AAAA hh"
+Valeur: "Entier, n"
 
 Venez me voir si vous avez des question :)
