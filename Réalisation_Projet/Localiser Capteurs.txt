@@ -12,7 +12,7 @@ CAPT_004	Parc Balzac
 Données reçu :
 CapteurID: CAPT_002,
 TypeDeDonnée: "Température"
-Date: "JJ/MM/AAAA hh"
+Date: "AAAA-MM-JJ hh"
 Valeur: "Entier, n"
 
 Venez me voir si vous avez des question :)
