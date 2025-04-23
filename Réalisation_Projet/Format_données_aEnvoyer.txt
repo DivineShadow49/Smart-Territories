@@ -2,8 +2,8 @@ Format des données
 
 Ca doit contenir
 	TypeDeDonnee -> Temperature, Pression-Atmo, Humidite, NO2, PM2.5, PM10, SO2, O3
-	Date -> 01/04/2025 13 (espace ou virgule ou n'importe quoi pour séparer l'heure)
-		JJ/MM/AAAA hh
+	Date -> 2025-04-01 13 (espace ou virgule ou n'importe quoi pour séparer l'heure) -> Choix final d'espace pour l'écart avec l'heure
+		AAAA-MM-JJ hh
 	Capteur -> Roseraie (l'endroit d'où ca vient)
 	Valeur -> entier ou dixième 
 		A envoyer en valeurs entières dans tout les cas pour vous (ER)
