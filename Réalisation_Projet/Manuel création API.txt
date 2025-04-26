@@ -152,3 +152,12 @@ Ecriture d'un get : all
 		res.status(500).json({message : 'Erreur de récupération des données', error: err});
 		}
 	});
+
+
+
+Ajout de mqtt et axios (connexion pour ERs)
+	npm install axios mqtt
+
+
+Ajout de la doc Swagger
+	npm install swagger-jsdoc swagger-ui-express
