@@ -1,0 +1,320 @@
+Fichier entry.js : 
+
+//Fichier servant de point d'entrée à l'API
+//
+//Il incluera les fichiers des autres classes et servira ainsi de main.
+
+
+const express = require("express");
+
+//On importe les deux autres classes pour avoir accès à leurs méthodes (et constructeurs)
+const { CRequetes } = require("./requetes");
+const { CModel } = require("./database");
+
+class CServer {
+    constructor() {
+        this.app = express();
+
+//      On instancie des objets des classes CModel et CRequetes pour pouvoir utiliser les requêtes et recevoir les données
+        this.modele = new CModel();
+        this.controleur = new CRequetes(this.modele);
+
+        this.config();
+        this.routes();
+        this.start();
+    }
+
+    config() {
+        this.app.use(express.json());
+    }
+
+//  On récupère les routes de la classe CRequetes
+    routes() {
+        this.app.use("/SmartTerritories", this.controleur.router);
+    }
+
+//  Démarrage du serveur sur le port 8080
+    start() {
+        const PORT = process.env.PORT || 8080;
+        this.app.listen(PORT, () => console.log(`Serveur démarré sur le port ${PORT}`));
+    }
+}
+
+
+// Lancement du serveur
+new CServer();
+
+
+
+
+
+
+Fichier database.js
+
+//Ce fichier comprendra les classes de base de données ainsi que le schéma/modèle mongoose.
+//
+//Cela correspondra donc à notre classe entité représentant la base de données.
+
+const mongoose = require("mongoose");
+
+//La classe CDatabase regroupera la connexion à la base de donnée MongoDB choisie pour le retour des données ainsi que le retour des erreurs
+class CDatabase {
+//  On récupère le nom de la base ainsi que son IP et le port concernés pour s'y connecter
+    constructor(dbName, host = "localhost", port = "27017") {
+        this.dbName = dbName;
+        this.host = host;
+        this.port = port;
+
+        this.uri = `mongodb://${this.host}:${this.port}/${this.dbName}`;
+        this._connect();
+    }
+
+//  On effectue la connexion à la base et si une erreur est retrouvée on la retourne
+//  Ecrit avec un "_" pour éviter de confondre avec le mongoose.connect
+    _connect() {
+        try {
+            mongoose.connect(this.uri);
+            console.log(`Connecté à MongoDB réussie, nom de BDD: ${this.dbName}`);
+        } catch(err) {
+//          Possibilité de retourner plusieurs erreurs & améliorer le switch
+            switch (err.name) {
+/*
+                case 'MongoNetworkError':
+                    console.error("Erreur de connexion réseau à MongoDB: ", err.message);
+                    break;
+*/
+                case 'MongoParseError':
+                    console.error("URI de connexion MongoDB invalide: ", err.message);
+                    break;
+                default:
+                    console.error("Erreur non repertoriée détectée: ", err.message);
+                    break;
+            }
+            throw err;
+        }
+    }
+}
+
+
+//La classe CModel créera un modèle de la base donnée dans la classe CDatabase, avec un modèle type pris en compte par défaut et un autre qui peut être donné par l'utilisateur
+class CModel {
+    constructor(modelName = 'dbModel', collectionName = 'Test_Database', schemaCustom = null) {
+        const schemaDefault = new mongoose.Schema({
+            Capteur: String,           // Nom du capteur (lieu)
+            TypeDeDonnee: String,      // Type de mesure (ex : Température)
+            Date: String,              // Date sous forme de string
+        });
+
+//      Si aucun modèle est donné alors on utilise le défault, sinon on utilise le custom.
+        this.model = mongoose.model(modelName, schemaDefault || schemaCustom, collectionName);
+    }
+
+    getModel() {
+        return this.model;
+    }
+
+//On renvoie les données des routes présentes dans la classe CRequetes
+    async getAllMesures() {
+        return await this.model.find();
+    }
+
+    async getMesuresFiltre(filtre, limite) {
+        console.log("Filtre utilisé :", filtre);
+        return await this.model.find(filtre).limit(limite);
+    }
+}
+
+// On instancie la base de données au chargement
+new CDatabase("Test_Database");
+
+
+module.exports = { CModel };
+
+
+
+
+
+
+Fichier requetes.js
+
+//Ce fichier et ainsi cette classe regroupera toutes les requêtes utilisées par l'API
+//
+//Cette classe servira donc de contrôle étant donné que notre point d'entrée est notre frontière.
+
+
+const express = require("express");
+const CModel = require("./database");
+
+//Cette classe regroupera les différentes routes pour acceder aux données de l'API, elle se connectera directement au modèle de CModel pour retourner les données
+class CRequetes {
+    constructor(modeleMesure) {
+        this.model = modeleMesure;
+
+        this.router = express.Router();
+        this.initialiseRoutes();
+    }
+
+//  Validation des paramètres possibles dans les requêtes HTTP
+    validationParams(req, res, next) {
+        const paramsAutorises = ["Capteur", "TypeDeDonnee", "Date", "DateDebut", "DateFin", "Limite"];
+        const paramsRecus = Object.keys(req.query);
+
+        if (paramsRecus.find(param => !paramsAutorises.includes(param))) {
+            return res.status(400).json({ message: "Paramètres invalides détectés." });
+        }
+
+//      On vérifie qu'il n'existe pas ET une Date simple ainsi qu'une date de début ou fin
+        if (req.query.Date && req.query.DateDebut || req.query.DateFin) {
+            return res.status(206).json({ message: "La date (simple) sera ignorée car vous avez entrée une date de début et/ou de fin" });
+        }
+
+
+//      On vérifie le format de la date (si fournie)
+        if (req.query.Date) {
+            const regexDate = new RegExp("^\\d{2}/\\d{2}/\\d{4}$");
+
+            if (Array.isArray(req.query.Date)) {
+                for (const d of req.query.Date) {
+                    if (!regexDate.test(d)) {
+                        return res.status(400).json({ message: "Format de date invalide. Utiliser DD/MM/YYYY." });
+                    }
+                }
+            } else {
+// 		Vérification d'une seule date
+                if (!regexDate.test(req.query.Date)) {
+                    return res.status(400).json({ message: "Format de date invalide. Utiliser DD/MM/YYYY." });
+                }
+            }
+        }
+
+//      On vérifie le format et le nombre de DateDebut dans la requête
+        if (req.query.DateDebut) {
+            const regexDate = new RegExp("^\\d{2}/\\d{2}/\\d{4}$");
+
+            if (Array.isArray(req.query.DateDebut)) {
+                return res.status(400).json({ message: "Il ne peut pas y avoir plusieurs dates de début." });
+            } else {
+// 		Vérification d'une seule date
+                if (!regexDate.test(req.query.DateDebut)) {
+                    return res.status(400).json({ message: "Format de date invalide. Utiliser DD/MM/YYYY." });
+                }
+            }
+        }
+
+
+//      On vérifie le format et le nombre de DateFin dans la requête
+        if (req.query.DateFin) {
+            const regexDate = new RegExp("^\\d{2}/\\d{2}/\\d{4}$");
+
+            if (Array.isArray(req.query.DateFin)) {
+                return res.status(400).json({ message: "Il ne peut pas y avoir plusieurs dates de fin." });
+            } else {
+// 		Vérification d'une seule date
+                if (!regexDate.test(req.query.DateFin)) {
+                    return res.status(400).json({ message: "Format de date invalide. Utiliser DD/MM/YYYY." });
+                }
+            }
+        }
+
+
+        next();
+    }
+
+
+//  Requête permettant de retourner toutes les données de la base
+//(principalement utile pour vérifier que des données sont enregistrées dans la base)
+    async getAllMesures(req, res) {
+        try {
+            const retour = await this.model.getAllMesures();
+
+            if (retour.lenght === 0) {
+                return res.status(444).json({ message: "Aucune donnée trouvée." });
+            }
+
+            res.json(retour).status(200);
+
+        } catch (error) {
+            console.log("Retour d'erreur: ", error);
+            res.status(500).json({ message: "Erreur interne du serveur.", error });
+        }
+    }
+
+
+//  Route pour récupérer les mesures avec filtre
+    async getMesuresFiltre(req, res) {
+        try {
+//          On vérifie que l'élément "req.query" n'est pas vide pour ne pas surcharger le serveur par l'envoi de données
+            if (Object.keys(req.query).length === 0) {
+                return res.status(303).json({ message: "ATTENTION : vous êtes sur le point d'afficher toutes les données et la base, utiliser la requête : '/api/all' si c'est votre demande." });
+            }
+
+            const { Capteur, TypeDeDonnee, Date, DateDebut, DateFin, Limite } = req.query;
+            const filtre = {};
+
+//          On créé une variable comportant tous les paramètres possibles dans la remarque pour éviter une erreur de syntaxe ou de paramètre inutile
+            const params_Requete = ["Capteur", "TypeDeDonnee", "Date", "DateDebut", "DateFin", "Limite"];
+
+
+//          On gère le paramètre de limite de données (limite de renvoi maximum)
+//          Cette partie du code est gérée ici et non dans "validationParams" pour avoir la variable "limit" en local et ne pas a devoir la placer en global
+            const limit = Limite || 10;
+            if (isNaN(limit) || limit <= 0) {
+                return res.status(400).json({ message: "Le paramètre 'Limite' doit être un nombre positif." });
+            }
+
+            if (Capteur) {
+                console.log("Filtre par capteur: ", Capteur);
+                filtre.Capteur = Capteur;
+            }
+
+            if (TypeDeDonnee) {
+                console.log("Filtre par TypeDeDonnee: ", TypeDeDonnee);
+                filtre.TypeDeDonnee = TypeDeDonnee;
+            }
+
+            if (DateDebut || DateFin) {
+                filtre.Date = {};
+
+                if (DateDebut) {
+                    filtre.Date.$gte = DateDebut;
+                }
+                if (DateFin) {
+                    filtre.Date.$lte = DateFin;
+                }
+
+                console.log("Filtrage par plage de dates : ", filtre.Date);
+            }
+
+            else if (Date){
+                console.log("Filtre par Date: ", Date);
+                filtre.Date = Date;
+            }
+
+            const retour = await this.model.getMesuresFiltre(filtre, limit);
+            console.log("Retour des données: ", retour);
+
+            if (retour.length === 0) {
+                return res.status(444).json({ message: "Aucune donnée trouvée avec ces critères." });
+            }
+
+            res.json(retour);
+        } catch (error) {
+            console.log("Retour d'erreur: ", error);
+            res.status(500).json({ message: "Erreur interne du serveur.", error });
+        }
+    }
+
+
+//  Initialisation des routes et vérification des paramètres de requête
+    initialiseRoutes() {
+        this.router.get("/dataFilter", this.validationParams, this.getMesuresFiltre.bind(this));
+        this.router.get("/allData", this.validationParams, this.getAllMesures.bind(this));
+    }
+}
+
+// Export de l'instance de la classe avec les routes
+//module.exports = new CRequetes().router;
+module.exports = { CRequetes };
+
+
+
