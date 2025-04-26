@@ -1,0 +1,154 @@
+INSTALLATION MONGO DB : 
+
+https://www.mongodb.com/docs/manual/tutorial/install-mongodb-on-ubuntu/
+Installation de MongoDB : 
+
+Installer gnupg et curl : 
+	sudo apt-get install gnupg curl
+
+Récupérer la clé GPG de MongoDB
+	curl -fsSL https://www.mongodb.org/static/pgp/server-4.4.asc | \
+   sudo gpg -o /usr/share/keyrings/mongodb-server-4.4.gpg \
+   --dearmor
+
+Créer la liste de fichiers
+	echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-4.4.gpg ] https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/4.4 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-4.4.list
+
+Recharger les paquets de la base de données
+	sudo apt-get update
+
+Télécharger MongoDB pour de vrai
+	sudo apt-get install -y mongodb-org=4.4.29 mongodb-org-server=4.4.29 mongodb-org-shell=4.4.29 mongodb-org-mongos=4.4.29 mongodb-org-tools=4.4.29
+
+
+Démarrer le service de base de donnée
+	sudo systemctl start mongod
+
+Vérifier le status du service
+	sudo systemctl status mongod
+
+
+
+CREER UNE BASE DE DONNÉES MONGODB EN CLI : 
+
+Acceder au shell MongoDB
+	$mongo
+
+Création de la BDD : 
+	use "nom_BDD"
+
+Vérification de la BDD en utilisation
+	db
+
+
+Inserer une entité dans la BDD (en script)
+	db."nom_bdd".insert( { "Nom_Champ1" : "Donnée1", "Nom_Champ2" : "Donnée2", [...], "Nom_ChampN" : "DonnéeN" } )
+
+Possible en une seule ligne ou ligne par ligne
+
+
+Verifier les données dans la BDD
+	db."nom_BDD".find().forEach(printjson)
+
+
+Sur un OS linux : 
+Installer NPM
+	sudo apt install nodejs npm -y
+
+Verifier la version si besoin 
+	nodejs --version		(ici 10.19.0)
+ET
+	npm --version			(ici 6.14.4)
+
+
+Installer l'outil de dev NPM : 
+	sudo apt install build-essential -y
+
+
+
+Ajouter un répertoire pour l'API
+	mkdir "..."
+
+Créer un fichier index.js
+	nano index.js
+Ecrire dans le fichier si besoin (pour ne pas le perdre)
+
+Démarrer le projet Node JS
+	npm init
+(répondre aux différentes questions comme le nom du projet et l'auteur, etc)
+
+Un paquet JSON sera ajouté dans le répertoire créé précédemment (package.json)
+	nano package.json
+Si besoin de vérifier le paquet et les informations renseignées
+
+Ajouter express à l'API
+	npm install express
+Installe la librairie express et les autres nécessaires. Ainsi que la registry NPM
+
+
+
+On peut désormais écrire dans notre 'index.js'
+Il nous faut d'abord créer le serveur à l'aide d'Express
+	const express = require('express')
+	const app = express()
+
+Reste plus qu'a mettre le serveur en écoute : 
+	app.listen(8080, () => { console.log("Serveur à l\'écoute") })
+
+Enfin, pour démarrer le serveur, il nous faut entrer la commande
+	node index.js
+OU
+	node .
+
+Pour avoir accès au serveur sur un navigateur, il faut entrer
+	localhost:8080
+Ainsi on a accès au serveur pour le moment
+
+
+
+
+METTRE A JOUR NODEJS POUR UTILISER MONGOOSE
+	curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.4/install.sh | bash
+
+	nvm install 18
+
+
+
+
+
+Lier MongoDB à l'API
+	npm install mongoose
+
+
+Ajouter mongoose à notre code
+	const mongoose = require('mongoose');
+
+Ecrire dans le index.js pour lier la BDD à l'API
+	mongoose
+		.connect('MongoDB://127.0.0.1/"nom_BDD)
+		.then(() => console.log('Connecté à MongoDB'))
+		.catch((err) => console.error('Erreur de connexion à MongoDB', err));
+
+
+Création d'un "schéma" mongoose : accès à la base de donnée ainsi que les données dedans
+	const "nom_schéma" = new mongoose.Schema({
+		"donnée1": "type",
+		"donnée2": "type",
+		[...]
+	}, {
+		collection: 'nom_bdd'
+	});
+
+	const "nom_model" = mongoose.model('nom_BDD', "nom_schéma");
+
+
+
+Ecriture d'un get : all
+	app.get('/api/all', async (req, res) => {
+		const retour = await "nom_BDD".find();
+
+		res.json(retour).status(200);
+		} catch (err) {
+		res.status(500).json({message : 'Erreur de récupération des données', error: err});
+		}
+	});

@@ -1,0 +1,30 @@
+Inclure les bibiliotheques MQTT & Axios (HTTP)
+
+	npm install mqtt axios
+
+
+const mqtt = require('mqtt');
+const axios = require('axios');
+
+const client = mqtt.connect('mqtt://localhost:1883'); //Ou adresse IP Gateway
+
+client.on('connect', () => {
+  console.log('Client MQTT vers API connecté');
+  client.subscribe('SmartTerritories/#'); //Changer topic si besoin
+});
+
+client.on('message', async (topic, message) => {
+  try {
+    const payload = JSON.parse(message.toString());
+    console.log('Message reçu du broker MQTT :', payload);
+
+    const res = await axios.post('http://localhost:8080/SmartTerritories/addData', payload); //Changer requête ou port/IP si besoin
+    console.log('Donnée envoyée à l’API :', res.data);
+  } catch (err) {
+    console.error('Erreur MQTT → API :', err.message);
+  }
+});
+
+
+console.log('Client opérationnel');
+
