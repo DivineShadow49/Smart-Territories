@@ -1,0 +1,219 @@
+Fichier database.js
+
+//Ce fichier comprendra les classes de base de données ainsi que le schéma/modèle mongoose.
+//
+//Cela correspondra donc à notre classe entité représentant la base de données.
+
+const mongoose = require("mongoose");
+
+class CDatabase {
+    constructor() {
+        this._connect();
+    }
+
+//  Ecrit avec un "_" pour éviter de confondre avec le mongoose.connect
+    _connect() {
+        mongoose.connect("mongodb://127.0.0.1/Test_Database")
+                .then(() => console.log("Connecté à MongoDB réussie"))
+                .catch(err => console.error("Erreur de connexion à MongoDB :", err));
+    }
+}
+
+
+class CModel {
+    constructor() {
+        const testDatabaseSchema = new mongoose.Schema({
+            Capteur: String,           // Nom du capteur (lieu)
+            TypeDeDonnee: String,      // Type de mesure (ex : Température)
+            Date: String,              // Date sous forme de string
+        }, {
+            collection: 'Test_Database'
+
+        });
+
+        this.TestDatabase = mongoose.model('Test_Database', testDatabaseSchema);
+    }
+
+    async getAllMesures() {
+        return await this.TestDatabase.find();
+    }
+
+    async getMesuresFiltre(filtre) {
+        console.log("Filtre utilisé :", filtre);
+        console.log(typeof(this.TestDatabase));
+        return await this.TestDatabase.find(filtre);
+    }
+}
+
+// On instancie la base de données au chargement
+new CDatabase();
+
+
+module.exports = new CModel();
+
+
+
+
+
+
+Fichier requetes.js
+
+//Ce fichier et ainsi cette classe regroupera toutes les requêtes utilisées par l'API
+//
+//Cette classe servira donc de contrôle étant donné que notre point d'entrée est notre frontière.
+
+
+const express = require("express");
+const CModel = require("./database");
+
+class CRequetes {
+    constructor() {
+        this.router = express.Router();
+        this.initialiseRoutes();
+    }
+
+    // Middleware de validation des paramètres
+    validationParams(req, res, next) {
+        const paramsAutorises = ["Capteur", "TypeDeDonnee", "Date"];
+        const paramsRecus = Object.keys(req.query);
+
+        if (paramsRecus.find(param => !paramsAutorises.includes(param))) {
+            return res.status(400).json({ message: "Paramètres invalides détectés." });
+        }
+
+        // Vérifier format de la date (si fournie)
+        if (req.query.Date) {
+            const regexDate = new RegExp("^\\d{2}/\\d{2}/\\d{4}$");
+
+            if (Array.isArray(req.query.Date)) {
+                for (const d of req.query.Date) {
+                    if (!regexDate.test(d)) {
+                        return res.status(400).json({ message: "Format de date invalide. Utiliser DD-MM-YYYY." });
+                    }
+                }
+            } else {
+                // Vérification d'une seule date
+                if (!regexDate.test(Date)) {
+                    return res.status(400).json({ message: "Format de date invalide. Utiliser DD-MM-YYYY." });
+                }
+            }
+        }
+
+        next();
+    }
+
+
+    async getAllMesures(req, res) {
+        try {
+            const retour = await CModel.getAllMesures();
+
+            if (retour.lenght === 0) {
+                return res.status(444).json({ message: "Aucune donnée trouvée." });
+            }
+
+            res.json(retour).status(200);
+
+        } catch (error) {
+            console.log("Retour d'erreur: ", error);
+            res.status(500).json({ message: "Erreur interne du serveur.", error });
+        }
+    }
+
+
+    // Route pour récupérer les mesures avec filtre
+    async getMesuresFiltre(req, res) {
+        try {
+//          On vérifie que l'élément "req.query" n'est pas vide pour ne pas surcharger le serveur par l'envoi de données
+            if (Object.keys(req.query).length === 0) {
+                return res.status(303).json({ message: "ATTENTION : vous êtes sur le point d'afficher toutes les données et la base, utiliser la requête : '/api/all' si c'est votre demande." });
+            }
+
+            const { Capteur, TypeDeDonnee, Date } = req.query;
+            const filtre = {};
+
+//          On créé une variable comportant tous les paramètres possibles dans la remarque pour éviter une erreur de syntaxe ou de paramètre inutile
+            const params_Requete = ["Capteur", "TypeDeDonnee", "Date"];
+
+
+//          On compare les objets de la requête (nos critères) avec les paramètres autorisés
+            if (Object.keys(req.query).find(param => !params_Requete.includes(param))) {
+                    return res.status(400).json({message: "Paramètres invalides détectés. Seuls 'Capteurs', 'TypeDeDonnee' et 'Date' sont autorisés."});
+            }
+
+
+            if (Capteur) {
+                console.log("Filtre par capteur: ", Capteur);
+                filtre.Capteur = Capteur;
+            }
+
+            if (TypeDeDonnee) {
+                console.log("Filtre par TypeDeDonnee: ", TypeDeDonnee);
+                filtre.TypeDeDonnee = TypeDeDonnee;
+            }
+
+            if (Date){
+                console.log("Filtre par Date: ", Date);
+                 filtre.Date = Date;
+            }
+
+            const retour = await CModel.getMesuresFiltre(filtre);
+            console.log("Retour des données: ", retour);
+
+            if (retour.length === 0) {
+                return res.status(444).json({ message: "Aucune donnée trouvée avec ces critères." });
+            }
+
+            res.json(retour);
+        } catch (error) {
+            console.log("Retour d'erreur: ", error);
+            res.status(500).json({ message: "Erreur interne du serveur.", error });
+        }
+    }
+
+    // Initialisation des routes
+    initialiseRoutes() {
+        this.router.get("/mesures", this.validationParams, this.getMesuresFiltre.bind(this));
+        this.router.get("/all", this.validationParams, this.getAllMesures.bind(this));
+    }
+}
+
+// Export de l'instance de la classe avec les routes
+module.exports = new CRequetes().router;
+
+
+
+Fichier entry.js
+
+//Fichier servant de point d'entrée à l'API
+//
+//Il incluera les fichiers des autres classes et servira ainsi de main.
+
+
+const express = require("express");
+const CRequetes = require("./requetes");
+
+class CServer {
+    constructor() {
+        this.app = express();
+        this.config();
+        this.routes();
+        this.start();
+    }
+
+    config() {
+        this.app.use(express.json());
+    }
+
+    routes() {
+        this.app.use("/api", CRequetes);
+    }
+
+    start() {
+        const PORT = process.env.PORT || 8080;
+        this.app.listen(PORT, () => console.log(`Serveur démarré sur le port ${PORT}`));
+    }
+}
+
+
+// Lancement du serveur
+new CServer();

@@ -1,0 +1,61 @@
+//Cette classe servira de client MQTT opérationnel avec un topic général ainsi qu'une adresse IP et un port de broker qui peuvent être donnés par l'utilisateur. Il contient les méthodes basiques de connexion au broker et de reception des messages
+class CClientMQTT {
+    constructor(topicName, addrIPBroker = "127.0.0.1", addrIPAPI = "127.0.0.1", portMQTT = "1883") {
+        this.topicName = topicName;
+        this.addrBroker = addrIPBroker
+        this.addrAPI = addrIPAPI;
+        this.portMQTT = portMQTT;
+
+//      Préparation du client pour la connexion (méthode connect)
+        this.client = null;
+    }
+
+
+//  Méthode de connexion au broker MQTT associé au client
+    _connect() {
+        const URLbroker = `mqtt://${this.addrBroker}:${this.portMQTT}`;
+        this.client = mqtt.connect(URLbroker);
+
+        this.client.on('connect', () => {
+            console.log("Connecté au broker MQTT");
+
+//          On se connecte au topic donné dans le constructeur
+            this.client.subscribe(this.topicName, (err) => {
+
+                if (err) {
+                    console.error('Erreur d’abonnement au topic:', err.message);
+                } else {
+                    console.log(`Abonné au topic : ${this.topicName}`);
+                }
+            });
+        });
+    }
+
+//  Méthode d'écoute aux messages venant du broker MQTT (fonctionnement asynchrone)
+    ecouterMessages() {
+        if (!this.client) {
+            console.error("Client MQTT non connecté.");
+            return;
+        }
+
+
+        this.client.on('message', async (topic, message) => {
+            try {
+                const payload = JSON.parse(message.toString());
+                console.log('Message reçu :', payload);
+
+                const res = await axios.post(`http://${this.addrAPI}:8080/SmartTerritories/addData`, payload);
+                console.log('Donnée envoyée à l’API :', res.data);
+            } catch (err) {
+                console.error('Erreur lors de l’envoi à l’API :', err.message);
+            }
+        });
+    }
+}
+
+
+const clientMQTT = new CClientMQTT('SmartTerritories/#');
+clientMQTT._connect();
+clientMQTT.ecouterMessages();
+
+module.exports = { CClientMQTT };
