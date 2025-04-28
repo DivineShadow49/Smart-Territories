@@ -1,0 +1,20 @@
+Allumer le serveur
+
+User : SmartTerritories
+MDP : BTS2425
+
+
+Ouvrir un terminal
+
+Démarrer MongoDB
+	sudo systemctl start mongod
+(Si mdp demandé alors le même)
+
+Se placer dans le repertoire de l'API
+	cd Documents/SmartTerritories
+
+Démarrer l'API 
+	node .
+
+
+(normalement tout est opérationnel après ca)
