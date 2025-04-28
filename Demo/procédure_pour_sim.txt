@@ -1,0 +1,4 @@
+-ouvrir le programme Arduino test_sim7080g_Donnee
+-téléverser le programme
+-ouvrir le moniteur série
+-appuyer sur le bouton reset de l'esp32 et attendre que les données s'envoie 
