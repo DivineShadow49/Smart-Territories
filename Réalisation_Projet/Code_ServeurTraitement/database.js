@@ -69,7 +69,7 @@ class CModel {
     }
 
     async getMesuresFiltre(filtre, limite) {
-	console.log("Filtre utilisé :", filtre);
+	//console.log("Filtre utilisé :", filtre);
 	return await this.model.find(filtre).limit(limite);
     }
 
