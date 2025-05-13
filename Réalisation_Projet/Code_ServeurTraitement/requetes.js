@@ -17,15 +17,18 @@ class CAPI {
 
 //  Validation des paramètres possibles dans les requêtes HTTP
     validationParams(req, res, next) {
+	logger.info(`Requête reçue: GET /dataFilter avec paramètres: ${JSON.stringify(req.query)}`);
         const paramsAutorises = ["Capteur", "TypeDeDonnee", "Date", "DateDebut", "DateFin", "Limite"];
         const paramsRecus = Object.keys(req.query);
 
         if (paramsRecus.find(param => !paramsAutorises.includes(param))) {
+	    logger.warn(`Paramètre(s) invalide(s) reçu(s) : ${paramsRecus}\n`);
             return res.status(400).json({ message: "Paramètres invalides détectés." });
         }
 
 //	On vérifie qu'il n'existe pas ET une Date simple ainsi qu'une date de début ou fin
 	if (req.query.Date && (req.query.DateDebut || req.query.DateFin)) {
+	    logger.warn("Date ignorée car DateDebut ou DateFin également fourni.\n");
 	    return res.status(206).json({ message: "La date (simple) sera ignorée car vous avez entrée une date de début et/ou de fin" });
 	}
 
@@ -35,6 +38,7 @@ class CAPI {
             const regexDate = new RegExp("^\\d{4}-\\d{2}-\\d{2} ((0\\d)|(1\\d)|(2[0-3]))$");
 
 	    if (Array.isArray(req.query.Date)) {
+		logger.warn(`Date invalide reçue : ${req.query.Date}\n`);
         	for (const d of req.query.Date) {
             	    if (!regexDate.test(d)) {
                	 	return res.status(400).json({ message: "Format de date invalide. Utiliser YYYY-MM-DD hh." });
@@ -43,6 +47,7 @@ class CAPI {
    	    } else {
 // 		Vérification d'une seule date
         	if (!regexDate.test(req.query.Date)) {
+		    logger.warn(`Date invalide reçue : ${req.query.Date}\n`);
             	    return res.status(400).json({ message: "Format de date invalide. Utiliser YYYY-MM-DD hh." });
         	}
 	    }
@@ -54,10 +59,12 @@ class CAPI {
 
 
             if (Array.isArray(req.query.DateDebut)) {
+		logger.warn(`DateDebut invalide : ${req.query.DateDebut}\n`);
                 return res.status(400).json({ message: "Il ne peut pas y avoir plusieurs dates de début." });
             } else {
 // 		Vérification d'une seule date
                 if (!regexDate.test(req.query.DateDebut)) {
+		    logger.warn(`DateDebut invalide : ${req.query.DateDebut}\n`);
                     return res.status(400).json({ message: "Format de date invalide. Utiliser YYYY-MM-DD hh." });
                 }
             }
@@ -70,10 +77,12 @@ class CAPI {
 
 
             if (Array.isArray(req.query.DateFin)) {
+		logger.warn(`DateFin invalide : ${req.query.DateFin}\n`);
                 return res.status(400).json({ message: "Il ne peut pas y avoir plusieurs dates de fin." });
             } else {
 //		 Vérification d'une seule date
                 if (!regexDate.test(req.query.DateFin)) {
+		    logger.warn(`DateFin invalide : ${req.query.DateFin}\n`);
                     return res.status(400).json({ message: "Format de date invalide. Utiliser YYYY-MM-DD hh." });
                 }
             }
@@ -105,16 +114,20 @@ class CAPI {
  */
     async getAllMesures(req, res) {
 	try {
+	    logger.info("Requête reçue: GET /allData");
 	    const retour = await this.model.getAllMesures();
 
 	    if (retour.lenght === 0) {
+		logger.warn("Aucune donnée trouvée en base.\n");
 		return res.status(444).json({ message: "Aucune donnée trouvée." });
 	    }
 
+	    logger.info(`Nombre de données récupérées : ${retour.length}\n`);
 	    res.json(retour).status(200);
 
 	} catch (error) {
-	    console.log("Retour d'erreur: ", error);
+	    logger.warn(`Erreur interne lors de la récupération des mesures : ${error.message}\n`);
+	    //console.log("Retour d'erreur: ", error);
 	    res.status(500).json({ message: "Erreur interne du serveur.", error });
 	}
     }
@@ -228,8 +241,10 @@ class CAPI {
  */
     async getMesuresFiltre(req, res) {
         try {
+	    logger.info(`Requête reçue: GET /dataFilter avec paramètres: ${JSON.stringify(req.query)}`);
 //          On vérifie que l'élément "req.query" n'est pas vide pour ne pas surcharger le serveur par l'envoi de données
 	    if (Object.keys(req.query).length === 0) {
+		logger.warn("Tentative de requête sans filtre. Utilisation de /allData recommandée.\n");
                 return res.status(303).json({ message: "ATTENTION : vous êtes sur le point d'afficher toutes les données et la base, utiliser la requête : '/SmartTerritories/allData' si c'est votre demande." });
             }
 
@@ -244,16 +259,17 @@ class CAPI {
 //	    Cette partie du code est gérée ici et non dans "validationParams" pour avoir la variable "limit" en local et ne pas a devoir la placer en global
 	    const limit = Limite || 10;
 	    if (isNaN(limit) || limit <= 0) {
+		logger.warn(`Limite invalide : ${Limite}\n`);
       	        return res.status(400).json({ message: "Le paramètre 'Limite' doit être un nombre positif." });
             }
 
             if (Capteur) {
-		console.log("Filtre par capteur: ", Capteur);
+		//console.log("Filtre par capteur: ", Capteur);
 		filtre.Capteur = Capteur;
 	    }
 
 	    if (TypeDeDonnee) {
-		console.log("Filtre par TypeDeDonnee: ", TypeDeDonnee);
+		//console.log("Filtre par TypeDeDonnee: ", TypeDeDonnee);
 		filtre.TypeDeDonnee = TypeDeDonnee;
 	    }
 
@@ -267,24 +283,27 @@ class CAPI {
         	    filtre.Date.$lte = DateFin;
     		}
 
-    		console.log("Filtrage par plage de dates : ", filtre.Date);
+    		//console.log("Filtrage par plage de dates : ", filtre.Date);
 	    }
 
             else if (Date){
-		console.log("Filtre par Date: ", Date);
+		//console.log("Filtre par Date: ", Date);
 		filtre.Date = Date;
 	    }
 
 	    const retour = await this.model.getMesuresFiltre(filtre, limit);
-	    console.log("Retour des données: ", retour);
+	    //console.log("Retour des données: ", retour);
 
             if (retour.length === 0) {
+		logger.warn("Aucune donnée trouvée avec les critères fournis.\n");
                 return res.status(444).json({ message: "Aucune donnée trouvée avec ces critères." });
             }
 
+	    logger.info(`Données renvoyées : ${retour.length}\n`);
             res.status(200).json(retour);
         } catch (error) {
-	    console.log("Retour d'erreur: ", error);
+	    logger.warn(`Erreur dans getMesuresFiltre : ${error.message}\n`);
+	    //console.log("Retour d'erreur: ", error);
             res.status(500).json({ message: "Erreur interne du serveur.", error });
         }
     }
@@ -335,6 +354,7 @@ class CAPI {
 
 // 	    Vérification des champs obligatoires
             if (!Capteur || !TypeDeDonnee || !Date || Valeur === undefined) {
+		logger.warn(`POST /addData : Champs manquants - ${JSON.stringify(req.body)}\n`);
             	return res.status(400).json({message: "Les champs Capteur, TypeDeDonnee, Date et Valeur sont requis."});
             }
 
@@ -348,12 +368,15 @@ class CAPI {
 
 // 	    Réponse en fonction du résultat
             if (resultat.success) {
+		logger.info(`Insertion réussie : ${JSON.stringify(req.body)}\n`);
             	res.status(201).json({ message: resultat.message });
             } else {
+		logger.warn(`Erreur d'insertion : ${resultat.error}\n`);
             	res.status(500).json({ message: resultat.message, error: resultat.error });
             }
 
 	} catch (error) {
+	    logger.warn(`POST /addData : Erreur serveur - ${error.message}\n`);
             res.status(500).json({message: "Erreur lors de la requête POST.", error: error.message});
         }
     }
